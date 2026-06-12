@@ -1,0 +1,15 @@
+{
+  "name": "Elsewedy IATS — Question Bank",
+  "short_name": "Question Bank",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5a4",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

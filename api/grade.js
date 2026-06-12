@@ -6,8 +6,8 @@ export default async function handler(req, res) {
 
   // If you want to hard-code the API key directly in this file, replace the placeholder below.
   // It is safer to use Vercel environment variables or a local .env file instead.
-  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'YOUR_OPENROUTER_API_KEY_HERE';
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'YOUR_OPENROUTER_API_KEY_HERE') {
+  const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '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';
+  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === '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') {
     return res.status(500).json({ error: 'Missing OpenRouter API key on server' });
   }
 

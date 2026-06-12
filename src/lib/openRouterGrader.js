@@ -1,40 +1,36 @@
 export async function gradeQuestionWithOpenRouterFree(questionData, userAnswer) {
-  const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY || "";
-  
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://elsewedy-iats-bank.v2", 
-        "X-Title": "Elsewedy Question Bank v2"
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-oss-20b:free", 
-        temperature: 0.1,
-        messages: [
-          {
-            role: "system",
-            content: `You are an automated technical exam grading engine. Evaluate the user's answer strictly against the model answer. Return a single, valid JSON object only. Do not wrap in markdown code blocks.
-            
-            Schema:
+  // Use a server-side proxy in production to avoid exposing API keys.
+  const useProxy = import.meta.env.PROD || !!import.meta.env.VITE_USE_API_PROXY;
+  const payload = {
+    model: "openai/gpt-oss-20b:free",
+    temperature: 0.1,
+    messages: [
+      {
+        role: "system",
+        content: `You are an automated technical exam grading engine. Evaluate the user's answer strictly against the model answer. Return a single, valid JSON object only. Do not wrap in markdown code blocks.
+            \n            Schema:
             {
               "isCorrect": boolean,
               "score": number,
               "feedback": "string",
               "modelAnswer": "string"
             }`
-          },
-          {
-            role: "user",
-            content: `Question: "${questionData.question}"
-Type: "${questionData.type}"
-Expected: "${questionData.answer}"
-User: "${userAnswer}"`
-          }
-        ]
-      })
+      },
+      {
+        role: "user",
+        content: `Question: "${questionData.question}"\nType: "${questionData.type}"\nExpected: "${questionData.answer}"\nUser: "${userAnswer}"`
+      }
+    ]
+  };
+  
+  try {
+    const endpoint = useProxy ? '/api/grade' : 'https://openrouter.ai/api/v1/chat/completions';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     });
 
     const data = await response.json();

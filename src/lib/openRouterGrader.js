@@ -25,23 +25,65 @@ export async function gradeQuestionWithOpenRouterFree(questionData, userAnswer) 
   
   try {
     const endpoint = useProxy ? '/api/grade' : 'https://openrouter.ai/api/v1/chat/completions';
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
 
-    const data = await response.json();
-    let rawText = data.choices[0].message.content.trim();
+    // Retry logic for transient network issues
+    const maxAttempts = 3;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
 
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      rawText = jsonMatch[0];
+        if (!response.ok) {
+          const text = await response.text().catch(() => '');
+          console.error(`OpenRouter upstream error (${response.status}):`, text);
+          if (attempt < maxAttempts) {
+            await new Promise(r => setTimeout(r, 500 * attempt));
+            continue;
+          }
+          return {
+            isCorrect: false,
+            score: 0,
+            feedback: `Grading temporary unavailable (Upstream ${response.status}). Please try again.`,
+            modelAnswer: questionData.answer || ""
+          };
+        }
+
+        const data = await response.json();
+        let rawText = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ? String(data.choices[0].message.content).trim() : '';
+
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) rawText = jsonMatch[0];
+
+        try {
+          return JSON.parse(rawText);
+        } catch (parseErr) {
+          console.error('Failed to parse OpenRouter response:', parseErr, rawText);
+          return {
+            isCorrect: false,
+            score: 0,
+            feedback: 'Grading temporary unavailable (Invalid AI response). Please try again.',
+            modelAnswer: questionData.answer || ""
+          };
+        }
+      } catch (err) {
+        console.error('OpenRouter request failed (attempt', attempt, '):', err);
+        if (attempt < maxAttempts) {
+          await new Promise(r => setTimeout(r, 500 * attempt));
+          continue;
+        }
+        return {
+          isCorrect: false,
+          score: 0,
+          feedback: 'Grading temporary unavailable (Network Timeout). Please try again.',
+          modelAnswer: questionData.answer || ""
+        };
+      }
     }
-
-    return JSON.parse(rawText);
 
   } catch (error) {
     console.error("OpenRouter Grading Error: ", error);
